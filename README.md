@@ -1,2 +1,5 @@
-# core
-The client-side core PHION library
+# Phion-core
+
+PHION's client-side core python library.
+
+
