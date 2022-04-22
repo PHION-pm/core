@@ -1,12 +1,14 @@
 import sys
 import os
 from pathlib import Path
+import time
 
 import urllib3
 
 from phion import Package
 from phion import Wallpaper
 from phion.utils import *
+from phion.enums
 
 import argparse
 from importlib.metadata import version
@@ -22,51 +24,61 @@ HOME_DIR = Path.home()
 DB_DIR = f"{HOME_DIR}/.config/phion/phion.db"
 
 def __add_wallpaper(package):
-    # clearConsole()
-    print("--------------------------------")
-    print("New Wallpaper:")
-    wallpaper_name = input("Wallpaper Name: ")
-    file_path = input("Wallpaper Full Path (or link): ")
+    while True:
+        clearConsole()
+        print("--------------------------------")
+        print("Add Wallpaper\n")
+        wallpaper_name = input("Wallpaper Name: ")
+        file_path = input("Wallpaper Full Path (or link): ")
 
 
-    with alive_bar as bar:
+
         if "http" in file_path:
+            logger.debug("File Location set as a URL")
+            urllib3.request.urlretrieve(file_path,wallpaper_name.replace(" ", "")+'.'+file_path.split(".")[-1])
             try:
-                bar.title = "Trying to download wallpaper"
+                logger.info(f"Downloading Image to" + wallpaper_name.replace(" ", "")+'.'+file_path.split('.')[-1])
                 urllib3.request.urlretrieve(file_path,wallpaper_name.replace(" ", "")+'.'+file_path.split(".")[-1])
-            except urllib3.HTTPError:
+            except:
                 logger.error("Could not retrieve wallpaper")
-            else: 
-                bar()
+            else:
+                logger.info("Successfully retrieved wallpaper") 
                 file_path = wallpaper_name.replace(" ", "")+'.'+file_path.split(".")[-1]
-                new_wallpaper = Wallpaper(name=wallpaper_name, path=file_path)
+                new_wallpaper = Wallpaper(name=wallpaper_name, location=file_path)
                 package.wallpapers.append(new_wallpaper)
-                bar()
+                logger.success("Wallpaper added successfully")
+                break
         
         else:
+            logger.debug("File Location as local file")
             if os.path.exists(file_path):
-                bar.title = "Found The wallpaper file"
-                bar()
+                logger.debug("File Exists as local file")
                 try:
+                    logger.debug("Checking file type")
                     __im=Image.open(file_path)
                 except IOError:
                     logger.error("Not a valid image file")
                 else:
-                    bar.title = "Is a valid image file"
-                    new_wallpaper = Wallpaper(name=wallpaper_name, path=file_path)
+                    logger.info("File is an Image")
+                    new_wallpaper = Wallpaper(name=wallpaper_name, location=file_path)
+                    logger.debug("Created new wallpaper object")
                     package.wallpapers.append(new_wallpaper)
+                    logger.info("Wallpaper added to package")
+                    break
             else:
-                logger.info("File Not Found")
+                logger.error("File Not Found")
 
-        logger.info("Created new wallpaper")
+        time.sleep(2)
 
 
-def __remove_wallpaper(package):
-    pass
+
+def __remove_wallpaper(package, wallpaper_index):
+    removed_wallpaper = package.wallpapers.pop(wallpaper_index)
+    logger.info(f"Removed wallpaper '{removed_wallpaper.name}' from package")
 
 
 def _edit_wallpapers(package):
-    # clearConsole()
+    clearConsole()
 
     while True:
         print("--------------------------------\n")
@@ -74,15 +86,16 @@ def _edit_wallpapers(package):
 
         menu = {
             'A': 'Add Wallpapers',
-            'R': 'Remove Wallpapers',
+            'B': 'Go Back'
         }
 
 
-        logger.info(f"Found {len(package.wallpapers)}")
+        logger.info(f"Found {len(package.wallpapers)} wallpaper in this package.\n")
         if len(package.wallpapers) != 0:
-            for wallpaper, i in package.wallpapers, range(0, len(package.wallpapers)):
-                print(f"[{i}] {wallpaper.name} -> {wallpaper.location}")
-            menu[f'0-{len(package.wallpapers)-1}'] = 'Select Wallpaper'
+            for wallpaper in package.wallpapers:
+                print(f"[{package.wallpapers.index(wallpaper)}] {wallpaper.name} -> {wallpaper.location}")
+            print("\n")
+            menu[f'0-{len(package.wallpapers)-1}'] = 'Select Wallpaper to remove'
 
         else:
             pass
@@ -92,16 +105,24 @@ def _edit_wallpapers(package):
 
         _choice = input("\n: ")
 
-        if _choice in menu.keys():
+        if _choice.upper() in menu.keys():
             try:
                 if _choice.upper() == 'A':
                     __add_wallpaper(package)
-                elif _choice.upper() == 'R':
-                    __remove_wallpaper(package)
+                elif _choice.upper() == 'B':
+                    break
             except:
                 pass
+ 
         else:
-            continue
+            try:
+                logger.debug(f"Wallpapers in package: { len(package.wallpapers)}")
+                logger.debug(f"Choice in selection:{int(_choice) in list(range(0,len(package.wallpapers)+1))}")
+
+                if len(package.wallpapers) > 0 and int(_choice) in list(range(0,len(package.wallpapers)+1)):
+                    __remove_wallpaper(package, int(_choice))
+            except:
+                pass
         
 
 def _edit_colorschemes(package):
@@ -120,11 +141,21 @@ def _quit(_=None):
     sys.exit()
 
 def package_wizard():
-    print("""PHION PACKAGE CREATION WIZARD\n""")
-    # time.sleep(2)
+    while True:
+        clearConsole()
+        print("""PHION PACKAGE CREATION WIZARD\n""")
+        time.sleep(0.4)
 
 
-    package_name = dinput("Package Name: ")
+        package_name = dinput("Package Name: ")
+
+        if package_name != None and package_name.isspace() == False and package_name!="":
+            break
+        else:
+            logger.error("Package Name cannot be empty")
+            time.sleep(0.7)
+            continue
+
     package_author = dinput("Package Author", os.getlogin())
     package_description = dinput("Package Description (default=None): ")
 
@@ -140,7 +171,7 @@ def package_wizard():
     }
 
     while True:
-        # clearConsole()
+        clearConsole()
         print("----------------------------------------------------------------")
         print(f"Editing Package: {package_name} \n\n")
         for option in list(menu.keys()):
@@ -194,7 +225,7 @@ def main():
     args = vars(parser.parse_args())
 
     if args['version']:
-        print(f"Phion Rice Package Manager Core Library\n\nVersion: {version('phion')}\nhttps://github.com/phion-pm/core")
+        print(f"Phion Rice Package Manager CLI \n\nVersion: {version('phion')}\nhttps://github.com/phion-pm/core")
     if args['list']:
         list_packages()
     if args['packagewizard']:

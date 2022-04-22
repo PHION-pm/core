@@ -7,6 +7,7 @@ import urllib.request
 import pickle
 import shutil
 
+from loguru import logger
 
 HOME_DIR = Path.home()
 DB_DIR = f"{HOME_DIR}/.config/phion/phion.db"
@@ -58,6 +59,7 @@ class Wallpaper():
         # get width and height
         self.width = img.width
         self.height = img.height
+        # logger.debug('Image dimensions as',img.width,img.height)
 
 
 class Package():
